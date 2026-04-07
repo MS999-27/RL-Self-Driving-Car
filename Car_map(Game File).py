@@ -50,7 +50,7 @@ class Car(Widget):
         self.sensor2 = Vector(30, 0).rotate((self.angle+30)%360) + self.pos
         self.sensor3 = Vector(30, 0).rotate((self.angle-30)%360) + self.pos
         
-        # Density sensing
+        # Density sensing logic
         for s in ['sensor1', 'sensor2', 'sensor3']:
             sx, sy = getattr(self, s+'_x'), getattr(self, s+'_y')
             if 10 < sx < longueur-10 and 10 < sy < largeur-10:
@@ -59,13 +59,41 @@ class Car(Widget):
             else:
                 setattr(self, 'signal'+s[-1], 1.0)
 
-class Ball1(Widget): pass
-class Ball2(Widget): pass
-class Ball3(Widget): pass
+class Ball1(Widget):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        with self.canvas:
+            Color(1, 0, 0) # Red sensor
+            self.ellipse = Ellipse(pos=self.pos, size=(10, 10))
+        self.bind(pos=self.update_ellipse)
+    def update_ellipse(self, *args):
+        self.ellipse.pos = self.pos
+
+class Ball2(Widget):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        with self.canvas:
+            Color(0, 1, 0) # Green sensor
+            self.ellipse = Ellipse(pos=self.pos, size=(10, 10))
+        self.bind(pos=self.update_ellipse)
+    def update_ellipse(self, *args):
+        self.ellipse.pos = self.pos
+
+class Ball3(Widget):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        with self.canvas:
+            Color(0, 0, 1) # Blue sensor
+            self.ellipse = Ellipse(pos=self.pos, size=(10, 10))
+        self.bind(pos=self.update_ellipse)
+    def update_ellipse(self, *args):
+        self.ellipse.pos = self.pos
 
 class Game(Widget):
     car = ObjectProperty(None)
-    ball1, ball2, ball3 = ObjectProperty(None), ObjectProperty(None), ObjectProperty(None)
+    ball1 = ObjectProperty(None)
+    ball2 = ObjectProperty(None)
+    ball3 = ObjectProperty(None)
 
     def serve_car(self):
         self.car.center = self.center
@@ -80,12 +108,15 @@ class Game(Widget):
         orientation = Vector(*self.car.velocity).angle((xx,yy))/180.
         last_signal = [self.car.signal1, self.car.signal2, self.car.signal3, orientation, -orientation]
         
-        # SAC Output (Smooth Rotation)
         rotation = brain.update(last_reward, last_signal)
         self.car.move(rotation)
 
         distance = np.sqrt((self.car.x - goal_x)**2 + (self.car.y - goal_y)**2)
-        self.ball1.pos, self.ball2.pos, self.ball3.pos = self.car.sensor1, self.car.sensor2, self.car.sensor3
+        
+        # This part requires the balls to be initialized in build()
+        self.ball1.pos = self.car.sensor1
+        self.ball2.pos = self.car.sensor2
+        self.ball3.pos = self.car.sensor3
 
         if sand[int(self.car.x), int(self.car.y)] > 0:
             self.car.velocity = Vector(1, 0).rotate(self.car.angle)
@@ -114,14 +145,17 @@ class MyPaintWidget(Widget):
     def on_touch_move(self, touch):
         if touch.button == 'left':
             touch.ud['line'].points += [touch.x, touch.y]
-            sand[int(touch.x)-10:int(touch.x)+10, int(touch.y)-10:int(touch.y)+10] = 1
+            x, y = int(touch.x), int(touch.y)
+            if 10 < x < longueur-10 and 10 < y < largeur-10:
+                sand[x-10:x+10, y-10:y+10] = 1
 
 class CarApp(App):
     def build(self):
         parent = Game()
-        parent.serve_car()
-        
-        # Add the sensor balls manually so they exist in the game
+        # 1. Create the car
+        parent.car = Car()
+        parent.add_widget(parent.car)
+        # 2. Create and link the sensor balls
         parent.ball1 = Ball1()
         parent.ball2 = Ball2()
         parent.ball3 = Ball3()
@@ -129,6 +163,7 @@ class CarApp(App):
         parent.add_widget(parent.ball2)
         parent.add_widget(parent.ball3)
         
+        parent.serve_car()
         Clock.schedule_interval(parent.update, 1.0/60.0)
         self.painter = MyPaintWidget()
         parent.add_widget(self.painter)
@@ -136,11 +171,4 @@ class CarApp(App):
 
 if __name__ == '__main__':
     CarApp().run()
-
-
-
-        
-       
-            
-     
       
