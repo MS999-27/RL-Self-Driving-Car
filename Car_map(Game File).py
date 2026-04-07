@@ -43,7 +43,7 @@ class Car(Widget):
     sensor3_x, sensor3_y = NumericProperty(0), NumericProperty(0)
     sensor3 = ReferenceListProperty(sensor3_x, sensor3_y)
     
-    # Using ObjectProperty to prevent Kivy/NumPy format crashes
+    # FIX: Using ObjectProperty prevents the Kivy/NumPy format crash
     signal1 = ObjectProperty(0.0)
     signal2 = ObjectProperty(0.0)
     signal3 = ObjectProperty(0.0)
@@ -60,14 +60,14 @@ class Car(Widget):
         for s in ['sensor1', 'sensor2', 'sensor3']:
             sx, sy = getattr(self, s+'_x'), getattr(self, s+'_y')
             if 10 < sx < longueur-10 and 10 < sy < largeur-10:
-                # Use .item() to ensure we extract a pure Python float
+                # Use .item() to extract a pure Python float from NumPy
                 raw_val = np.sum(sand[int(sx)-10:int(sx)+10, int(sy)-10:int(sy)+10])
                 val = float(raw_val.item()) / 400.0
                 setattr(self, 'signal'+s[-1], val)
             else:
                 setattr(self, 'signal'+s[-1], 1.0)
 
-# Custom Widgets for the Sensors
+# Sensor visualization
 class Ball1(Widget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -100,9 +100,7 @@ class Ball3(Widget):
 
 class Game(Widget):
     car = ObjectProperty(None)
-    ball1 = ObjectProperty(None)
-    ball2 = ObjectProperty(None)
-    ball3 = ObjectProperty(None)
+    ball1, ball2, ball3 = ObjectProperty(None), ObjectProperty(None), ObjectProperty(None)
 
     def serve_car(self):
         self.car.center = self.center
@@ -118,7 +116,6 @@ class Game(Widget):
         
         last_signal = [float(self.car.signal1), float(self.car.signal2), float(self.car.signal3), orientation, -orientation]
         
-        # SAC Brain call
         rotation = brain.update(last_reward, last_signal)
         self.car.move(rotation)
 
@@ -160,15 +157,11 @@ class CarApp(App):
     def build(self):
         parent = Game()
         parent.car = Car()
-        parent.ball1 = Ball1()
-        parent.ball2 = Ball2()
-        parent.ball3 = Ball3()
-        
+        parent.ball1, parent.ball2, parent.ball3 = Ball1(), Ball2(), Ball3()
         parent.add_widget(parent.car)
         parent.add_widget(parent.ball1)
         parent.add_widget(parent.ball2)
         parent.add_widget(parent.ball3)
-        
         parent.serve_car()
         Clock.schedule_interval(parent.update, 1.0/60.0)
         self.painter = MyPaintWidget()
