@@ -158,19 +158,27 @@ class MyPaintWidget(Widget):
 class CarApp(App):
     def build(self):
         parent = Game()
-        parent.car = Car()
+        # 1. Create the car instance
+        the_car = Car()
+        
+        # 2. MANUALLY link the car to the parent's property
+        parent.car = the_car
+        
+        # 3. Create the sensors
         parent.ball1, parent.ball2, parent.ball3 = Ball1(), Ball2(), Ball3()
         
-        parent.add_widget(parent.car)
+        # 4. Add them all to the screen
+        parent.add_widget(the_car)
         parent.add_widget(parent.ball1)
         parent.add_widget(parent.ball2)
         parent.add_widget(parent.ball3)
         
+        # 5. Now we can safely call serve_car
         parent.serve_car()
+        
         Clock.schedule_interval(parent.update, 1.0/60.0)
         self.painter = MyPaintWidget()
         parent.add_widget(self.painter)
         return parent
-
 if __name__ == '__main__':
     CarApp().run()
