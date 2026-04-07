@@ -44,18 +44,21 @@ class Car(Widget):
 
     def move(self, rotation):
         self.pos = Vector(*self.velocity) + self.pos
-        self.rotation = rotation
-        self.angle = self.angle + self.rotation
+        self.rotation = float(rotation) # Force standard float
+        self.angle = float(self.angle + self.rotation) # Force standard float
+        
         self.sensor1 = Vector(30, 0).rotate(self.angle) + self.pos
         self.sensor2 = Vector(30, 0).rotate((self.angle+30)%360) + self.pos
         self.sensor3 = Vector(30, 0).rotate((self.angle-30)%360) + self.pos
         
-        # Density sensing logic
+        # Strict density sensing logic
         for s in ['sensor1', 'sensor2', 'sensor3']:
             sx, sy = getattr(self, s+'_x'), getattr(self, s+'_y')
             if 10 < sx < longueur-10 and 10 < sy < largeur-10:
-                val = float(np.sum(sand[int(sx)-10:int(sx)+10, int(sy)-10:int(sy)+10])/400.
-                setattr(self, 'signal'+s[-1], val)
+                # We calculate the sum, then immediately force it to a standard Python float
+                raw_val = np.sum(sand[int(sx)-10:int(sx)+10, int(sy)-10:int(sy)+10])
+                val = float(raw_val) / 400.0
+                setattr(self, 'signal'+s[-1], float(val))
             else:
                 setattr(self, 'signal'+s[-1], 1.0)
 
