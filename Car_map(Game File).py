@@ -54,7 +54,7 @@ class Car(Widget):
         for s in ['sensor1', 'sensor2', 'sensor3']:
             sx, sy = getattr(self, s+'_x'), getattr(self, s+'_y')
             if 10 < sx < longueur-10 and 10 < sy < largeur-10:
-                val = np.sum(sand[int(sx)-10:int(sx)+10, int(sy)-10:int(sy)+10])/400.
+                val = float(np.sum(sand[int(sx)-10:int(sx)+10, int(sy)-10:int(sy)+10])/400.
                 setattr(self, 'signal'+s[-1], val)
             else:
                 setattr(self, 'signal'+s[-1], 1.0)
