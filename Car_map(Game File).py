@@ -111,11 +111,11 @@ class Game(Widget):
     ball3 = ObjectProperty(None)
 
     def serve_car(self):
-        # SAFETY GATE: Only runs if car is actually connected
-        if self.car:
+        # The Safety Gate: only run if car is NOT None
+        if self.car is not None:
             self.car.center = self.center
             self.car.velocity = Vector(6, 0)
-
+    
     def update(self, dt):
         global brain, last_reward, scores, last_distance, goal_x, goal_y, longueur, largeur
         longueur, largeur = self.width, self.height
@@ -150,22 +150,26 @@ class Game(Widget):
 class SelfDrivingApp(App): # Renamed to break the link to car.kv
     def build(self):
         parent = Game()
-        self.car_obj = Car()
-        self.b1, self.b2, self.b3 = Ball1(), Ball2(), Ball3()
+        moving_car = Car()
         
-        parent.add_widget(self.car_obj)
-        parent.add_widget(self.b1)
-        parent.add_widget(self.b2)
-        parent.add_widget(self.b3)
+        # Link them manually
+        parent.add_widget(moving_car)
+        parent.car = moving_car
         
-        # Explicit link
-        parent.car = self.car_obj
-        parent.ball1, parent.ball2, parent.ball3 = self.b1, self.b2, self.b3
+        # ADD THESE THREE LINES for the sensors
+        parent.ball1, parent.ball2, parent.ball3 = Ball1(), Ball2(), Ball3()
+        parent.add_widget(parent.ball1)
+        parent.add_widget(parent.ball2)
+        parent.add_widget(parent.ball3)
         
-        parent.serve_car()
+        # Use Clock to wait until the window is ready
+        Clock.schedule_once(lambda dt: parent.serve_car(), 0.1)
+        
         Clock.schedule_interval(parent.update, 1.0/60.0)
-        parent.add_widget(MyPaintWidget())
+        self.painter = MyPaintWidget()
+        parent.add_widget(self.painter)
         return parent
+       
 
 if __name__ == '__main__':
     SelfDrivingApp().run()
