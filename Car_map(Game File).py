@@ -21,14 +21,13 @@ last_reward = 0
 scores = []
 first_update = True
 longueur, largeur = 0, 0
+last_distance = 0
 
 def init():
     global sand, goal_x, goal_y, first_update
     sand = np.zeros((longueur, largeur))
     goal_x, goal_y = 20, largeur - 20
     first_update = False
-
-last_distance = 0
 
 class Car(Widget):
     angle = NumericProperty(0)
@@ -43,7 +42,7 @@ class Car(Widget):
     sensor3_x, sensor3_y = NumericProperty(0), NumericProperty(0)
     sensor3 = ReferenceListProperty(sensor3_x, sensor3_y)
     
-    # FIX: ObjectProperty allows NumPy floats without crashing Kivy
+    # ObjectProperty allows NumPy floats without crashing Kivy
     signal1 = ObjectProperty(0.0)
     signal2 = ObjectProperty(0.0)
     signal3 = ObjectProperty(0.0)
@@ -60,10 +59,9 @@ class Car(Widget):
         for s in ['sensor1', 'sensor2', 'sensor3']:
             sx, sy = getattr(self, s+'_x'), getattr(self, s+'_y')
             if 10 < sx < longueur-10 and 10 < sy < largeur-10:
-                # Use .item() to extract a pure Python float from NumPy sum
+                # FIXED INDENTATION: These lines must stay inside the 'if' block
                 raw_sum = np.sum(sand[int(sx)-10:int(sx)+10, int(sy)-10:int(sy)+10])
-                # Use .item() to strip the NumPy formatting entirely
-                val = float(np.sum(sand[int(sx)-10:int(sx)+10, int(sy)-10:int(sy)+10]).item()) / 400.0
+                val = float(raw_sum.item()) / 400.0
                 setattr(self, 'signal'+s[-1], val)
             else:
                 setattr(self, 'signal'+s[-1], 1.0)
@@ -98,15 +96,37 @@ class Ball3(Widget):
     def update_ellipse(self, *args):
         self.ellipse.pos = self.pos
 
+class MyPaintWidget(Widget):
+    def on_touch_down(self, touch):
+        global length, n_points, last_x, last_y
+        with self.canvas:
+            Color(0.8, 0.7, 0)
+            touch.ud['line'] = Line(points=(touch.x, touch.y), width=10)
+            last_x = int(touch.x)
+            last_y = int(touch.y)
+            n_points = 0
+            length = 0
+            sand[int(touch.x), int(touch.y)] = 1
+
+    def on_touch_move(self, touch):
+        global length, n_points, last_x, last_y
+        if touch.button == 'left':
+            touch.ud['line'].points += [touch.x, touch.y]
+            x = int(touch.x)
+            y = int(touch.y)
+            sand[int(x) - 10 : int(x) + 10, int(y) - 10 : int(y) + 10] = 1
+            n_points += 1
+            length += np.sqrt(max((x - last_x)**2 + (y - last_y)**2, 2))
+            last_x = x
+            last_y = y
+
 class Game(Widget):
-    # These placeholders remain, but we will fill them manually
     car = ObjectProperty(None)
     ball1 = ObjectProperty(None)
     ball2 = ObjectProperty(None)
     ball3 = ObjectProperty(None)
 
     def serve_car(self):
-        # Safety check: if for some reason car is still None, we skip to avoid crash
         if self.car is not None:
             self.car.center = self.center
             self.car.velocity = Vector(6, 0)
@@ -117,7 +137,6 @@ class Game(Widget):
         if first_update:
             init()
 
-        # Ensure the car exists before trying to run AI logic
         if self.car is None:
             return
 
@@ -151,29 +170,22 @@ class Game(Widget):
 
 class CarApp(App):
     def build(self):
-        # 1. Create the Main Game Layout
         parent = Game()
-        
-        # 2. Create the ACTUAL Car and Sensor objects
         moving_car = Car()
         sensor_red = Ball1()
         sensor_green = Ball2()
         sensor_blue = Ball3()
         
-        # 3. ATTACH them to the parent so they appear on screen
         parent.add_widget(moving_car)
         parent.add_widget(sensor_red)
         parent.add_widget(sensor_green)
         parent.add_widget(sensor_blue)
         
-        # 4. CRITICAL: Manually link the names to the objects
-        # This prevents the 'NoneType' error
         parent.car = moving_car
         parent.ball1 = sensor_red
         parent.ball2 = sensor_green
         parent.ball3 = sensor_blue
         
-        # 5. Now it is finally safe to call serve_car
         parent.serve_car()
         
         Clock.schedule_interval(parent.update, 1.0/60.0)
