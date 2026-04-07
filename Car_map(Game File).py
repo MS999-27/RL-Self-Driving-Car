@@ -127,10 +127,10 @@ class Game(Widget):
     ball3 = ObjectProperty(None)
 
     def serve_car(self):
-        if self.car is not None:
+        # Only set the center if the car object exists AND is ready
+        if self.car:
             self.car.center = self.center
             self.car.velocity = Vector(6, 0)
-
     def update(self, dt):
         global brain, last_reward, scores, last_distance, goal_x, goal_y, longueur, largeur
         longueur, largeur = self.width, self.height
@@ -169,7 +169,7 @@ class Game(Widget):
         last_distance = distance
 
 class CarApp(App):
-    def build(self):
+     def build(self):
         parent = Game()
         moving_car = Car()
         sensor_red = Ball1()
@@ -186,7 +186,8 @@ class CarApp(App):
         parent.ball2 = sensor_green
         parent.ball3 = sensor_blue
         
-        parent.serve_car()
+        # FIX: Instead of calling it directly, wait 0.1 seconds for Kivy to start
+        Clock.schedule_once(lambda dt: parent.serve_car(), 0.1)
         
         Clock.schedule_interval(parent.update, 1.0/60.0)
         self.painter = MyPaintWidget()
