@@ -69,24 +69,24 @@ class Ball1(Widget):
         super().__init__(**kwargs)
         with self.canvas:
             Color(1, 0, 0)
-            self.ellipse = Ellipse(pos=self.pos, size=(10, 10))
-        self.bind(pos=lambda obj, pos: setattr(self.ellipse, 'pos', pos))
+            self.el = Ellipse(pos=self.pos, size=(10, 10))
+        self.bind(pos=lambda obj, pos: setattr(self.el, 'pos', pos))
 
 class Ball2(Widget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         with self.canvas:
             Color(0, 1, 0)
-            self.ellipse = Ellipse(pos=self.pos, size=(10, 10))
-        self.bind(pos=lambda obj, pos: setattr(self.ellipse, 'pos', pos))
+            self.el = Ellipse(pos=self.pos, size=(10, 10))
+        self.bind(pos=lambda obj, pos: setattr(self.el, 'pos', pos))
 
 class Ball3(Widget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         with self.canvas:
             Color(0, 0, 1)
-            self.ellipse = Ellipse(pos=self.pos, size=(10, 10))
-        self.bind(pos=lambda obj, pos: setattr(self.ellipse, 'pos', pos))
+            self.el = Ellipse(pos=self.pos, size=(10, 10))
+        self.bind(pos=lambda obj, pos: setattr(self.el, 'pos', pos))
 
 class MyPaintWidget(Widget):
     def on_touch_down(self, touch):
@@ -101,75 +101,74 @@ class MyPaintWidget(Widget):
         if touch.button == 'left':
             touch.ud['line'].points += [touch.x, touch.y]
             x, y = int(touch.x), int(touch.y)
-            sand[int(x)-10:int(x)+10, int(y)-10:int(y)+10] = 1
+            if 0 <= x < longueur and 0 <= y < largeur:
+                sand[int(x)-10:int(x)+10, int(y)-10:int(y)+10] = 1
             last_x, last_y = x, y
 
-class Game(Widget):
-    car = ObjectProperty(None)
-    ball1 = ObjectProperty(None)
-    ball2 = ObjectProperty(None)
-    ball3 = ObjectProperty(None)
+class MainGame(Widget):
+    # Renamed 'car' to 'my_car' to avoid any .kv conflicts
+    my_car = ObjectProperty(None)
+    b1 = ObjectProperty(None)
+    b2 = ObjectProperty(None)
+    b3 = ObjectProperty(None)
 
-    def serve_car(self):
-        # The Safety Gate: only run if car is NOT None
-        if self.car is not None:
-            self.car.center = self.center
-            self.car.velocity = Vector(6, 0)
-    
+    def start_position(self):
+        # Only run if the car was actually created
+        if self.my_car:
+            self.my_car.center = self.center
+            self.my_car.velocity = Vector(6, 0)
+
     def update(self, dt):
         global brain, last_reward, scores, last_distance, goal_x, goal_y, longueur, largeur
         longueur, largeur = self.width, self.height
         if first_update:
             init()
 
-        if not self.car: return # Prevent crash
+        if not self.my_car: return
 
-        xx, yy = goal_x - self.car.x, goal_y - self.car.y
-        orientation = Vector(*self.car.velocity).angle((xx, yy)) / 180.
-        last_signal = [float(self.car.signal1), float(self.car.signal2), float(self.car.signal3), orientation, -orientation]
+        xx, yy = goal_x - self.my_car.x, goal_y - self.my_car.y
+        orientation = Vector(*self.my_car.velocity).angle((xx, yy)) / 180.
+        last_signal = [float(self.my_car.signal1), float(self.my_car.signal2), float(self.my_car.signal3), orientation, -orientation]
         action = brain.update(last_reward, last_signal)
-        self.car.move(action)
+        self.my_car.move(action)
         
-        distance = np.sqrt((self.car.x - goal_x)**2 + (self.car.y - goal_y)**2)
-        self.ball1.pos, self.ball2.pos, self.ball3.pos = self.car.sensor1, self.car.sensor2, self.car.sensor3
+        distance = np.sqrt((self.my_car.x - goal_x)**2 + (self.my_car.y - goal_y)**2)
+        self.b1.pos, self.b2.pos, self.b3.pos = self.my_car.sensor1, self.my_car.sensor2, self.my_car.sensor3
 
-        if sand[int(self.car.x), int(self.car.y)] > 0:
-            self.car.velocity = Vector(1, 0).rotate(self.car.angle)
+        if sand[int(self.my_car.x), int(self.my_car.y)] > 0:
+            self.my_car.velocity = Vector(1, 0).rotate(self.my_car.angle)
             last_reward = -10
         else: 
-            self.car.velocity = Vector(4, 0).rotate(self.car.angle)
+            self.my_car.velocity = Vector(4, 0).rotate(self.my_car.angle)
             last_reward = -0.2
             if distance < last_distance: last_reward = 0.5
 
-        if self.car.x < 10 or self.car.x > self.width - 10 or self.car.y < 10 or self.car.y > self.height - 10:
+        if self.my_car.x < 10 or self.my_car.x > self.width - 10 or self.my_car.y < 10 or self.my_car.y > self.height - 10:
             last_reward = -10
         if distance < 100:
             goal_x, goal_y = self.width - goal_x, self.height - goal_y
         last_distance = distance
 
-class SelfDrivingApp(App): # Renamed to break the link to car.kv
+class FinalSelfDrivingApp(App):
     def build(self):
-        parent = Game()
-        moving_car = Car()
+        parent = MainGame()
+        # Create car
+        car_instance = Car()
+        parent.add_widget(car_instance)
+        parent.my_car = car_instance
         
-        # Link them manually
-        parent.add_widget(moving_car)
-        parent.car = moving_car
+        # Create sensors
+        parent.b1, parent.b2, parent.b3 = Ball1(), Ball2(), Ball3()
+        parent.add_widget(parent.b1)
+        parent.add_widget(parent.b2)
+        parent.add_widget(parent.b3)
         
-        # ADD THESE THREE LINES for the sensors
-        parent.ball1, parent.ball2, parent.ball3 = Ball1(), Ball2(), Ball3()
-        parent.add_widget(parent.ball1)
-        parent.add_widget(parent.ball2)
-        parent.add_widget(parent.ball3)
-        
-        # Use Clock to wait until the window is ready
-        Clock.schedule_once(lambda dt: parent.serve_car(), 0.1)
+        # Use Clock to wait until window is ready
+        Clock.schedule_once(lambda dt: parent.start_position(), 0.5)
         
         Clock.schedule_interval(parent.update, 1.0/60.0)
-        self.painter = MyPaintWidget()
-        parent.add_widget(self.painter)
+        parent.add_widget(MyPaintWidget())
         return parent
-       
 
 if __name__ == '__main__':
-    SelfDrivingApp().run()
+    FinalSelfDrivingApp().run()
