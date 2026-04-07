@@ -127,6 +127,8 @@ class Game(Widget):
         self.car.velocity = Vector(6, 0)
 
     def update(self, dt):
+        rotation = brain.update(Last_reward, Last_signal)
+        self.car.move(rotation)
 
         global brain
         global last_reward
@@ -151,7 +153,8 @@ class Game(Widget):
         last_signal = [self.car.signal1, self.car.signal2, self.car.signal3, 
                        orientation, -orientation]
         # Using the update function of the Dql calss to get the next optimal action 
-        action = brain.update(last_reward, last_signal)
+        rotation = brain.update(last_reward, last_signal)
+        self.car.move(rotation)
         # Updating the mean score
         scores.append(brain.score())
         # Converting the action played (0, 1 or 2) into the rotation angle (0°, 20° or -20°)
