@@ -11,14 +11,16 @@ from kivy.vector import Vector
 from kivy.clock import Clock
 from ai import SAC
 
+# Setting the mouse configuration
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 
 # Global Variables
 last_x, last_y, n_points, length = 0, 0, 0, 0
-brain = SAC(5) # 5 Sensors/Inputs
+brain = SAC(5) 
 last_reward = 0
 scores = []
 first_update = True
+longueur, largeur = 0, 0
 
 def init():
     global sand, goal_x, goal_y, first_update
@@ -40,33 +42,37 @@ class Car(Widget):
     sensor2 = ReferenceListProperty(sensor2_x, sensor2_y)
     sensor3_x, sensor3_y = NumericProperty(0), NumericProperty(0)
     sensor3 = ReferenceListProperty(sensor3_x, sensor3_y)
-    signal1, signal2, signal3 = NumericProperty(0), NumericProperty(0), NumericProperty(0)
+    
+    # Using ObjectProperty to prevent Kivy/NumPy format crashes
+    signal1 = ObjectProperty(0.0)
+    signal2 = ObjectProperty(0.0)
+    signal3 = ObjectProperty(0.0)
 
     def move(self, rotation):
         self.pos = Vector(*self.velocity) + self.pos
-        self.rotation = float(rotation) # Force standard float
-        self.angle = float(self.angle + self.rotation) # Force standard float
+        self.rotation = float(rotation)
+        self.angle = float(self.angle + self.rotation)
         
         self.sensor1 = Vector(30, 0).rotate(self.angle) + self.pos
         self.sensor2 = Vector(30, 0).rotate((self.angle+30)%360) + self.pos
         self.sensor3 = Vector(30, 0).rotate((self.angle-30)%360) + self.pos
         
-        # Strict density sensing logic
         for s in ['sensor1', 'sensor2', 'sensor3']:
             sx, sy = getattr(self, s+'_x'), getattr(self, s+'_y')
             if 10 < sx < longueur-10 and 10 < sy < largeur-10:
-                # We calculate the sum, then immediately force it to a standard Python float
+                # Use .item() to ensure we extract a pure Python float
                 raw_val = np.sum(sand[int(sx)-10:int(sx)+10, int(sy)-10:int(sy)+10])
-                val = float(raw_val) / 400.0
-                setattr(self, 'signal'+s[-1], float(val))
+                val = float(raw_val.item()) / 400.0
+                setattr(self, 'signal'+s[-1], val)
             else:
                 setattr(self, 'signal'+s[-1], 1.0)
 
+# Custom Widgets for the Sensors
 class Ball1(Widget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         with self.canvas:
-            Color(1, 0, 0) # Red sensor
+            Color(1, 0, 0)
             self.ellipse = Ellipse(pos=self.pos, size=(10, 10))
         self.bind(pos=self.update_ellipse)
     def update_ellipse(self, *args):
@@ -76,7 +82,7 @@ class Ball2(Widget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         with self.canvas:
-            Color(0, 1, 0) # Green sensor
+            Color(0, 1, 0)
             self.ellipse = Ellipse(pos=self.pos, size=(10, 10))
         self.bind(pos=self.update_ellipse)
     def update_ellipse(self, *args):
@@ -86,7 +92,7 @@ class Ball3(Widget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         with self.canvas:
-            Color(0, 0, 1) # Blue sensor
+            Color(0, 0, 1)
             self.ellipse = Ellipse(pos=self.pos, size=(10, 10))
         self.bind(pos=self.update_ellipse)
     def update_ellipse(self, *args):
@@ -108,18 +114,16 @@ class Game(Widget):
         if first_update: init()
 
         xx, yy = goal_x - self.car.x, goal_y - self.car.y
-        orientation = float(Vector(*self.car.velocity).angle((xx,yy))/180.
-        last_signal = [self.car.signal1, self.car.signal2, self.car.signal3, orientation, -orientation]
+        orientation = float(Vector(*self.car.velocity).angle((xx,yy))/180.)
         
+        last_signal = [float(self.car.signal1), float(self.car.signal2), float(self.car.signal3), orientation, -orientation]
+        
+        # SAC Brain call
         rotation = brain.update(last_reward, last_signal)
         self.car.move(rotation)
 
         distance = np.sqrt((self.car.x - goal_x)**2 + (self.car.y - goal_y)**2)
-        
-        # This part requires the balls to be initialized in build()
-        self.ball1.pos = self.car.sensor1
-        self.ball2.pos = self.car.sensor2
-        self.ball3.pos = self.car.sensor3
+        self.ball1.pos, self.ball2.pos, self.ball3.pos = self.car.sensor1, self.car.sensor2, self.car.sensor3
 
         if sand[int(self.car.x), int(self.car.y)] > 0:
             self.car.velocity = Vector(1, 0).rotate(self.car.angle)
@@ -155,13 +159,12 @@ class MyPaintWidget(Widget):
 class CarApp(App):
     def build(self):
         parent = Game()
-        # 1. Create the car
         parent.car = Car()
-        parent.add_widget(parent.car)
-        # 2. Create and link the sensor balls
         parent.ball1 = Ball1()
         parent.ball2 = Ball2()
         parent.ball3 = Ball3()
+        
+        parent.add_widget(parent.car)
         parent.add_widget(parent.ball1)
         parent.add_widget(parent.ball2)
         parent.add_widget(parent.ball3)
@@ -174,4 +177,3 @@ class CarApp(App):
 
 if __name__ == '__main__':
     CarApp().run()
-      
