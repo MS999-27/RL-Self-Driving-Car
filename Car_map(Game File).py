@@ -108,7 +108,7 @@ class Game(Widget):
         if first_update: init()
 
         xx, yy = goal_x - self.car.x, goal_y - self.car.y
-        orientation = Vector(*self.car.velocity).angle((xx,yy))/180.
+        orientation = float(Vector(*self.car.velocity).angle((xx,yy))/180.
         last_signal = [self.car.signal1, self.car.signal2, self.car.signal3, orientation, -orientation]
         
         rotation = brain.update(last_reward, last_signal)
