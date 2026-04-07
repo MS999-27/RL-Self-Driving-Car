@@ -99,89 +99,87 @@ class Ball3(Widget):
         self.ellipse.pos = self.pos
 
 class Game(Widget):
+    # These placeholders remain, but we will fill them manually
     car = ObjectProperty(None)
     ball1 = ObjectProperty(None)
     ball2 = ObjectProperty(None)
     ball3 = ObjectProperty(None)
 
     def serve_car(self):
-        self.car.center = self.center
-        self.car.velocity = Vector(6, 0)
+        # Safety check: if for some reason car is still None, we skip to avoid crash
+        if self.car is not None:
+            self.car.center = self.center
+            self.car.velocity = Vector(6, 0)
 
     def update(self, dt):
         global brain, last_reward, scores, last_distance, goal_x, goal_y, longueur, largeur
         longueur, largeur = self.width, self.height
-        if first_update: init()
+        if first_update:
+            init()
 
-        xx, yy = goal_x - self.car.x, goal_y - self.car.y
-        orientation = float(Vector(*self.car.velocity).angle((xx,yy))/180.)
-        
+        # Ensure the car exists before trying to run AI logic
+        if self.car is None:
+            return
+
+        xx = goal_x - self.car.x
+        yy = goal_y - self.car.y
+        orientation = Vector(*self.car.velocity).angle((xx, yy)) / 180.
         last_signal = [float(self.car.signal1), float(self.car.signal2), float(self.car.signal3), orientation, -orientation]
+        action = brain.update(last_reward, last_signal)
+        self.car.move(action)
         
-        rotation = brain.update(last_reward, last_signal)
-        self.car.move(rotation)
-
         distance = np.sqrt((self.car.x - goal_x)**2 + (self.car.y - goal_y)**2)
-        self.ball1.pos, self.ball2.pos, self.ball3.pos = self.car.sensor1, self.car.sensor2, self.car.sensor3
+        self.ball1.pos = self.car.sensor1
+        self.ball2.pos = self.car.sensor2
+        self.ball3.pos = self.car.sensor3
 
         if sand[int(self.car.x), int(self.car.y)] > 0:
             self.car.velocity = Vector(1, 0).rotate(self.car.angle)
             last_reward = -10
-        else:
+        else: 
             self.car.velocity = Vector(4, 0).rotate(self.car.angle)
             last_reward = -0.2
-            if distance < last_distance: last_reward = 0.5
+            if distance < last_distance:
+                last_reward = 0.5
 
-        if self.car.x < 10 or self.car.x > self.width-10 or self.car.y < 10 or self.car.y > self.height-10:
+        if self.car.x < 10 or self.car.x > self.width - 10 or self.car.y < 10 or self.car.y > self.height - 10:
             last_reward = -10
-        
         if distance < 100:
-            goal_x, goal_y = self.width-goal_x, self.height-goal_y
+            goal_x = self.width - goal_x
+            goal_y = self.height - goal_y
         last_distance = distance
-
-class MyPaintWidget(Widget):
-    def on_touch_down(self, touch):
-        global last_x, last_y
-        with self.canvas:
-            Color(0.8,0.7,0)
-            touch.ud['line'] = Line(points = (touch.x, touch.y), width = 20)
-            last_x, last_y = int(touch.x), int(touch.y)
-            sand[last_x, last_y] = 1
-
-    def on_touch_move(self, touch):
-        if touch.button == 'left':
-            touch.ud['line'].points += [touch.x, touch.y]
-            x, y = int(touch.x), int(touch.y)
-            if 10 < x < longueur-10 and 10 < y < largeur-10:
-                sand[x-10:x+10, y-10:y+10] = 1
 
 class CarApp(App):
     def build(self):
-        # 1. Create the Game layout
+        # 1. Create the Main Game Layout
         parent = Game()
         
-        # 2. Create the Car and Sensors
-        the_car = Car()
-        b1, b2, b3 = Ball1(), Ball2(), Ball3()
+        # 2. Create the ACTUAL Car and Sensor objects
+        moving_car = Car()
+        sensor_red = Ball1()
+        sensor_green = Ball2()
+        sensor_blue = Ball3()
         
-        # 3. Add them to the Game widget immediately
-        parent.add_widget(the_car)
-        parent.add_widget(b1)
-        parent.add_widget(b2)
-        parent.add_widget(b3)
+        # 3. ATTACH them to the parent so they appear on screen
+        parent.add_widget(moving_car)
+        parent.add_widget(sensor_red)
+        parent.add_widget(sensor_green)
+        parent.add_widget(sensor_blue)
         
         # 4. CRITICAL: Manually link the names to the objects
-        parent.car = the_car
-        parent.ball1 = b1
-        parent.ball2 = b2
-        parent.ball3 = b3
+        # This prevents the 'NoneType' error
+        parent.car = moving_car
+        parent.ball1 = sensor_red
+        parent.ball2 = sensor_green
+        parent.ball3 = sensor_blue
         
-        # 5. Now it is safe to serve
+        # 5. Now it is finally safe to call serve_car
         parent.serve_car()
         
         Clock.schedule_interval(parent.update, 1.0/60.0)
         self.painter = MyPaintWidget()
         parent.add_widget(self.painter)
         return parent
+
 if __name__ == '__main__':
     CarApp().run()
