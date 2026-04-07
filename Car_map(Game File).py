@@ -120,6 +120,15 @@ class CarApp(App):
     def build(self):
         parent = Game()
         parent.serve_car()
+        
+        # Add the sensor balls manually so they exist in the game
+        parent.ball1 = Ball1()
+        parent.ball2 = Ball2()
+        parent.ball3 = Ball3()
+        parent.add_widget(parent.ball1)
+        parent.add_widget(parent.ball2)
+        parent.add_widget(parent.ball3)
+        
         Clock.schedule_interval(parent.update, 1.0/60.0)
         self.painter = MyPaintWidget()
         parent.add_widget(self.painter)
