@@ -63,8 +63,8 @@ class Car(Widget):
                 # Use .item() to extract a pure Python float from NumPy sum
                 raw_sum = np.sum(sand[int(sx)-10:int(sx)+10, int(sy)-10:int(sy)+10])
                 # Use .item() to strip the NumPy formatting entirely
-    val = float(np.sum(sand[int(sx)-10:int(sx)+10, int(sy)-10:int(sy)+10]).item()) / 400.0
-    setattr(self, 'signal'+s[-1], val)
+                val = float(np.sum(sand[int(sx)-10:int(sx)+10, int(sy)-10:int(sy)+10]).item()) / 400.0
+                setattr(self, 'signal'+s[-1], val)
             else:
                 setattr(self, 'signal'+s[-1], 1.0)
 
